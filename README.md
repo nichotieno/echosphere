@@ -12,6 +12,7 @@ This project is built with Next.js and styled with Tailwind CSS and ShadCN UI co
 - [Getting Started](#getting-started)
 - [API and Function Reference](#api-and-function-reference)
   - [Data Fetching Functions](#data-fetching-functions)
+  - [AI Flows](#ai-flows)
   - [Core Components](#core-components)
   - [Pages and Routing](#pages-and-routing)
 - [Future Enhancements](#future-enhancements)
@@ -23,6 +24,7 @@ This project is built with Next.js and styled with Tailwind CSS and ShadCN UI co
 -   **Detailed Post View:** Click on a post to see its full content and comments.
 -   **Commenting System:** Users can add comments to posts.
 -   **Real-Time Private Chat:** A one-on-one chat interface between users.
+-   **AI Smart Replies:** In the chat interface, users can get AI-generated suggestions for replies based on the conversation history.
 -   **Responsive Design:** A seamless experience across desktop and mobile devices.
 
 ## Tech Stack
@@ -46,8 +48,10 @@ The project follows a standard Next.js App Router structure:
 .
 ├── src/
 │   ├── ai/                 # Genkit AI flows and configuration
-│   │   ├── genkit.ts       # Genkit initialization
-│   │   └── ...
+│   │   ├── flows/          # Genkit flow implementations
+│   │   │   └── suggest-replies-flow.ts
+│   │   ├── dev.ts          # Development server entry point for Genkit
+│   │   └── genkit.ts       # Genkit initialization
 │   ├── app/                # Application routes (App Router)
 │   │   ├── (auth)/         # Route group for auth pages
 │   │   │   ├── login/
@@ -115,12 +119,22 @@ These functions are located in `src/lib/data.ts` and simulate fetching data from
     -   **Parameters:** `id` (string) - The ID of the user.
     -   **Returns:** A `User` object or `undefined` if not found.
 
+### AI Flows
+
+These functions are located in `src/ai/flows/` and leverage Genkit to provide AI capabilities.
+
+-   **`suggestReplies(input: SuggestRepliesInput): Promise<SuggestRepliesOutput>`**
+    -   **File:** `src/ai/flows/suggest-replies-flow.ts`
+    -   **Description:** Takes the recent chat history and generates three concise, context-aware reply suggestions.
+    -   **Parameters:** `input` (object) - An object containing a `messages` array, where each message has a `role` ('user' or 'model') and `content`.
+    -   **Returns:** A Promise that resolves to an object containing an array of suggestion strings.
+
 ### Core Components
 
 Key reusable components located in `src/components/`.
 
 -   **`ChatLayout (src/components/chat-layout.tsx)`**
-    -   **Description:** A comprehensive UI component that renders the entire chat interface, including the user list, message display area, and input form.
+    -   **Description:** A comprehensive UI component that renders the entire chat interface, including the user list, message display area, and input form. It now includes an AI-powered "Smart Reply" feature.
     -   **Props:**
         -   `users: User[]`: An array of all users to display in the chat list.
         -   `messages: ChatMessage[]`: An array of all chat messages.
@@ -156,6 +170,5 @@ The application uses the Next.js App Router for file-based routing.
 -   **AI-Powered Features:**
     -   **Content Moderation:** Use a Genkit flow to analyze and flag inappropriate content in posts and comments.
     -   **Summarization:** Create an AI flow to summarize long posts or comment threads.
-    -   **Smart Replies:** Generate AI-suggested replies in the chat interface.
 -   **User Profiles:** Create dedicated profile pages for users to showcase their posts and activity.
 -   **Notifications:** Implement a notification system for new messages and replies.

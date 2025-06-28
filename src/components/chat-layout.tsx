@@ -1,15 +1,16 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from 'react';
-import Link from "next/link";
 import { User, ChatMessage } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Smile, Paperclip, MessageSquare } from 'lucide-react';
+import { Send, Smile, Paperclip, MessageSquare, Sparkles, Loader2 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
+import { suggestReplies, type SuggestRepliesInput } from '@/ai/flows/suggest-replies-flow';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface ChatLayoutProps {
   users: User[];
@@ -21,6 +22,8 @@ export function ChatLayout({ users: initialUsers, messages: initialMessages, def
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [messages, setMessages] = useState(initialMessages);
   const [messageInput, setMessageInput] = useState("");
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
   const otherUsers = useMemo(() => initialUsers.filter(u => u.id !== defaultUserId), [initialUsers, defaultUserId]);
@@ -31,6 +34,11 @@ export function ChatLayout({ users: initialUsers, messages: initialMessages, def
       setSelectedUser(otherUsers[0]);
     }
   }, [otherUsers]);
+
+  useEffect(() => {
+    // When the selected user changes, clear suggestions
+    setSuggestions([]);
+  }, [selectedUser]);
 
   const conversation = useMemo(() => {
     return selectedUser
@@ -56,8 +64,34 @@ export function ChatLayout({ users: initialUsers, messages: initialMessages, def
         };
         setMessages(prev => [...prev, newMessage]);
         setMessageInput("");
+        setSuggestions([]);
     }
   };
+
+  const handleSuggestReplies = async () => {
+    if (!selectedUser || conversation.length === 0) return;
+    setIsSuggesting(true);
+    setSuggestions([]);
+    try {
+        const history: SuggestRepliesInput['messages'] = conversation
+            .slice(-6) // take last 6 messages for context
+            .map(msg => ({
+                role: msg.senderId === defaultUserId ? 'user' : 'model',
+                content: msg.content
+            }));
+        
+        const result = await suggestReplies({ messages: history });
+        if (result && result.suggestions) {
+            setSuggestions(result.suggestions);
+        }
+    } catch (error) {
+        console.error("Error suggesting replies:", error);
+        // TODO: In a real app, maybe show a toast to the user
+    } finally {
+        setIsSuggesting(false);
+    }
+  };
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -140,19 +174,54 @@ export function ChatLayout({ users: initialUsers, messages: initialMessages, def
               </div>
             </ScrollArea>
 
-            <div className="p-4 border-t">
+            {suggestions.length > 0 && (
+              <div className="p-4 border-t flex flex-wrap gap-2 justify-end">
+                {suggestions.map((suggestion, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                        setMessageInput(suggestion);
+                        setSuggestions([]);
+                    }}
+                  >
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
+            )}
+
+            <div className="p-4 border-t bg-muted/50">
               <div className="relative">
                 <Input
                   placeholder="Type a message..."
-                  className="pr-28"
+                  className="pr-40"
                   value={messageInput}
                   onChange={(e) => setMessageInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        handleSendMessage();
+                    }
+                  }}
                 />
                 <div className="absolute top-1/2 right-2 -translate-y-1/2 flex items-center">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                           <Button variant="ghost" size="icon" onClick={handleSuggestReplies} disabled={isSuggesting || conversation.length === 0}>
+                              {isSuggesting ? <Loader2 className="h-5 w-5 animate-spin"/> : <Sparkles className="h-5 w-5"/>}
+                           </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>Suggest replies (AI)</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
                     <Button variant="ghost" size="icon"><Smile className="h-5 w-5"/></Button>
                     <Button variant="ghost" size="icon"><Paperclip className="h-5 w-5"/></Button>
-                    <Button size="sm" onClick={handleSendMessage}><Send className="h-4 w-4"/></Button>
+                    <Button size="sm" onClick={handleSendMessage} disabled={!messageInput.trim()}><Send className="h-4 w-4"/></Button>
                 </div>
               </div>
             </div>
