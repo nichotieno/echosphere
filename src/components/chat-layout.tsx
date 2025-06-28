@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send, Smile, Paperclip } from 'lucide-react';
+import { Send, Smile, Paperclip, MessageSquare } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 
 interface ChatLayoutProps {
